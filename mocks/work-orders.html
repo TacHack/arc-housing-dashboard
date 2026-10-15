@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Work orders — Sober Living CRM</title>
+  <style>
+    :root {
+      --bg: #f4f6f8; --surface: #fff; --border: #e2e8f0; --text: #0f172a;
+      --muted: #64748b; --primary: #0f766e; --primary-hover: #0d9488;
+      --urgent: #dc2626; --high: #ea580c; --normal: #2563eb; --low: #64748b;
+      --open: #0369a1; --progress: #a16207; --blocked: #b91c1c; --done: #15803d;
+      --shadow: 0 10px 40px rgba(15, 23, 42, 0.12); --radius: 10px;
+      --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; display: flex; }
+    nav.sidebar { width: 220px; background: #0f172a; color: #e2e8f0; padding: 1.25rem 0.75rem; flex-shrink: 0; }
+    nav.sidebar .brand { font-weight: 700; padding: 0.5rem 0.75rem 1.25rem; color: #fff; }
+    nav.sidebar a { display: block; padding: 0.55rem 0.75rem; border-radius: 8px; color: #94a3b8; text-decoration: none; font-size: 0.9rem; margin-bottom: 2px; cursor: pointer; }
+    nav.sidebar a:hover { background: #1e293b; color: #fff; }
+    nav.sidebar a.active { background: var(--primary); color: #fff; }
+    main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    header.top { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.85rem 1.5rem; display: flex; align-items: center; gap: 1rem; justify-content: space-between; }
+    header.top select.house { font-size: 0.875rem; color: var(--muted); border: 1px solid var(--border); border-radius: 8px; padding: 0.4rem 0.75rem; background: #fff; }
+    .content { padding: 1.5rem; }
+    .page { display: none; }
+    .page.visible { display: block; }
+    .page-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1.25rem; }
+    .page-head h1 { margin: 0; font-size: 1.5rem; }
+    .page-head p { margin: 0.35rem 0 0; color: var(--muted); font-size: 0.95rem; }
+    .btn { border: none; border-radius: 8px; padding: 0.55rem 1rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-ghost { background: #fff; border: 1px solid var(--border); color: var(--text); }
+    .filters { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+    .filters input, .filters select, .form-row input, .form-row select, .drawer input, .drawer select, .drawer textarea {
+      border: 1px solid var(--border); border-radius: 8px; padding: 0.45rem 0.65rem; font-size: 0.875rem; background: #fff; font-family: inherit;
+    }
+    .filters input { min-width: 220px; flex: 1; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th { text-align: left; padding: 0.75rem 1rem; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); background: #f8fafc; }
+    td { padding: 0.85rem 1rem; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    tr.data-row { cursor: pointer; }
+    tr.data-row:hover { background: #f8fafc; }
+    .pill { display: inline-flex; border-radius: 999px; padding: 0.15rem 0.55rem; font-size: 0.75rem; font-weight: 600; }
+    .prio-urgent { background: #fee2e2; color: var(--urgent); }
+    .prio-high { background: #ffedd5; color: var(--high); }
+    .prio-normal { background: #dbeafe; color: var(--normal); }
+    .prio-low { background: #f1f5f9; color: var(--low); }
+    .st-open { background: #e0f2fe; color: var(--open); }
+    .st-progress { background: #fef9c3; color: var(--progress); }
+    .st-blocked { background: #fee2e2; color: var(--blocked); }
+    .st-done { background: #dcfce7; color: var(--done); }
+    .muted { color: var(--muted); }
+    .house-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
+    .house-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; }
+    .house-card h3 { margin: 0 0 0.35rem; font-size: 1.05rem; }
+    .house-card p { margin: 0; color: var(--muted); font-size: 0.85rem; }
+    .form-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; max-width: 480px; margin-bottom: 1.25rem; }
+    .form-card h2 { margin: 0 0 0.75rem; font-size: 1.05rem; }
+    .form-row { margin-bottom: 0.75rem; }
+    .form-row label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.3rem; }
+    .form-row input, .form-row select { width: 100%; }
+    .toast { position: fixed; bottom: 1.25rem; left: 50%; transform: translateX(-50%); background: #0f172a; color: #fff; padding: 0.65rem 1rem; border-radius: 8px; font-size: 0.875rem; opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 60; }
+    .toast.show { opacity: 1; }
+    .overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 40; }
+    .overlay.open { opacity: 1; pointer-events: auto; }
+    .drawer { position: fixed; top: 0; right: 0; width: min(440px, 100%); height: 100%; background: #fff; box-shadow: var(--shadow); transform: translateX(100%); transition: transform 0.25s ease; z-index: 50; display: flex; flex-direction: column; }
+    .drawer.open { transform: translateX(0); }
+    .drawer-head { padding: 1.15rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; }
+    .drawer-head h2 { margin: 0; font-size: 1.15rem; }
+    .drawer-body { padding: 1.25rem; overflow-y: auto; flex: 1; }
+    .drawer-foot { padding: 1rem 1.25rem; border-top: 1px solid var(--border); display: flex; gap: 0.5rem; justify-content: flex-end; }
+    label { display: block; font-size: 0.8rem; font-weight: 600; margin: 0.85rem 0 0.35rem; color: #334155; }
+    label:first-child { margin-top: 0; }
+    .drawer input, .drawer select, .drawer textarea { width: 100%; }
+    textarea { min-height: 88px; resize: vertical; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .photo-box { border: 1px dashed var(--border); border-radius: 8px; padding: 1rem; text-align: center; color: var(--muted); font-size: 0.875rem; background: #f8fafc; }
+    .close-x { background: transparent; border: none; font-size: 1.35rem; cursor: pointer; color: var(--muted); }
+    .req { color: var(--urgent); }
+    @media (max-width: 800px) { nav.sidebar { display: none; } .grid-2 { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="brand">Sober Living CRM</div>
+    <a data-nav="work-orders" class="active">Work orders</a>
+    <a data-nav="homes">Homes</a>
+  </nav>
+
+  <main>
+    <header class="top">
+      <strong id="topTitle">Work orders</strong>
+      <select class="house" id="globalHouse" aria-label="House filter"></select>
+    </header>
+
+    <div class="content">
+      <section class="page visible" id="page-work-orders">
+        <div class="page-head">
+          <div>
+            <h1>Work orders</h1>
+            <p>Each order is tied to a house — add houses under Homes</p>
+          </div>
+          <button class="btn btn-primary" id="btnNew" type="button">New work order</button>
+        </div>
+        <div class="filters">
+          <input type="search" id="search" placeholder="Search by title, room, or #" />
+          <select id="filterStatus">
+            <option value="active">Status: Open + In progress</option>
+            <option value="Open">Open</option>
+            <option value="In progress">In progress</option>
+            <option value="Blocked">Blocked</option>
+            <option value="Done">Done</option>
+            <option value="all">All</option>
+          </select>
+        </div>
+        <div class="card">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th><th>House / room</th><th>Title</th><th>Priority</th><th>Status</th><th>Assignee</th><th>Due</th><th>Updated</th>
+              </tr>
+            </thead>
+            <tbody id="woBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="page" id="page-homes">
+        <div class="page-head">
+          <div>
+            <h1>Homes</h1>
+            <p>Add houses so work orders and daily ops can target them</p>
+          </div>
+        </div>
+        <div class="form-card">
+          <h2>Add a house</h2>
+          <div class="form-row">
+            <label for="newHouseName">Name <span class="req">*</span></label>
+            <input id="newHouseName" type="text" placeholder="e.g. Cedar Lane House" />
+          </div>
+          <div class="form-row">
+            <label for="newHouseAddress">Address</label>
+            <input id="newHouseAddress" type="text" placeholder="Street, city" />
+          </div>
+          <button class="btn btn-primary" id="btnAddHouse" type="button">Add house</button>
+        </div>
+        <div class="house-grid" id="houseGrid"></div>
+      </section>
+    </div>
+  </main>
+
+  <div class="overlay" id="overlay"></div>
+  <aside class="drawer" id="drawer" aria-hidden="true">
+    <div class="drawer-head">
+      <h2 id="drawerTitle">New work order</h2>
+      <button class="close-x" id="btnClose" type="button" aria-label="Close">×</button>
+    </div>
+    <div class="drawer-body">
+      <label for="woTitle">Title <span class="req">*</span></label>
+      <input id="woTitle" type="text" placeholder="e.g. Leaky faucet in bathroom" />
+
+      <label for="woDesc">Description</label>
+      <textarea id="woDesc" placeholder="What’s wrong, where, and any safety notes"></textarea>
+
+      <div class="grid-2">
+        <div>
+          <label for="woHouse">House <span class="req">*</span></label>
+          <select id="woHouse"></select>
+        </div>
+        <div>
+          <label for="woRoom">Room / bed</label>
+          <input id="woRoom" type="text" placeholder="Bath 2" />
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <label for="woCategory">Category</label>
+          <select id="woCategory">
+            <option>Plumbing</option><option>Electrical</option><option>HVAC</option>
+            <option>Furniture</option><option>Safety</option><option>Cleaning</option><option>Other</option>
+          </select>
+        </div>
+        <div>
+          <label for="woPriority">Priority</label>
+          <select id="woPriority">
+            <option>Low</option><option selected>Normal</option><option>High</option><option>Urgent</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <label for="woAssignee">Assignee</label>
+          <select id="woAssignee">
+            <option value="">Unassigned</option>
+            <option>Alex M.</option><option>Sam R.</option><option>Jordan W.</option>
+          </select>
+        </div>
+        <div>
+          <label for="woDue">Due date</label>
+          <input id="woDue" type="date" />
+        </div>
+      </div>
+
+      <label for="woStatus">Status</label>
+      <select id="woStatus">
+        <option>Open</option><option>In progress</option><option>Blocked</option><option>Done</option>
+      </select>
+
+      <label>Photos</label>
+      <div class="photo-box">Add photos</div>
+    </div>
+    <div class="drawer-foot">
+      <button class="btn btn-ghost" id="btnCancel" type="button">Cancel</button>
+      <button class="btn btn-primary" id="btnSave" type="button">Create work order</button>
+    </div>
+  </aside>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let houses = [
+      { id: 'h1', name: 'Oak Street House', address: '12 Oak St' },
+      { id: 'h2', name: 'River Bend House', address: '88 River Rd' }
+    ];
+    let orders = [
+      { id: 1042, houseId: 'h1', room: 'Bath 2', title: 'Leaky faucet', priority: 'High', status: 'In progress', assignee: 'Alex M.', due: 'Oct 16', updated: '2h ago' },
+      { id: 1041, houseId: 'h1', room: 'Room 3', title: 'Broken window latch', priority: 'Urgent', status: 'Open', assignee: '', due: 'Oct 15', updated: '5h ago' },
+      { id: 1038, houseId: 'h1', room: 'Kitchen', title: 'Fridge running warm', priority: 'Normal', status: 'Blocked', assignee: 'Sam R.', due: 'Oct 18', updated: 'Yesterday' },
+      { id: 1030, houseId: 'h2', room: 'Hall', title: 'Replace smoke detector battery', priority: 'Low', status: 'Done', assignee: 'Alex M.', due: 'Oct 12', updated: '3d ago' }
+    ];
+    let nextId = 1043;
+
+    const prioClass = { Urgent: 'prio-urgent', High: 'prio-high', Normal: 'prio-normal', Low: 'prio-low' };
+    const stClass = { Open: 'st-open', 'In progress': 'st-progress', Blocked: 'st-blocked', Done: 'st-done' };
+
+    function toast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2200);
+    }
+
+    function houseName(id) {
+      const h = houses.find(x => x.id === id);
+      return h ? h.name.replace(/ House$/, '') : '?';
+    }
+
+    function refreshHouseSelects() {
+      const global = document.getElementById('globalHouse');
+      const wo = document.getElementById('woHouse');
+      const currentGlobal = global.value || 'all';
+      global.innerHTML = '<option value="all">All houses</option>' +
+        houses.map(h => `<option value="${h.id}">${h.name}</option>`).join('');
+      if ([...global.options].some(o => o.value === currentGlobal)) global.value = currentGlobal;
+      wo.innerHTML = houses.map(h => `<option value="${h.id}">${h.name}</option>`).join('');
+    }
+
+    function renderHouses() {
+      document.getElementById('houseGrid').innerHTML = houses.map(h => `
+        <div class="house-card">
+          <h3>${h.name}</h3>
+          <p>${h.address || 'No address yet'}</p>
+          <p style="margin-top:0.5rem">${orders.filter(o => o.houseId === h.id && o.status !== 'Done').length} open orders</p>
+        </div>`).join('');
+    }
+
+    function renderOrders() {
+      const houseFilter = document.getElementById('globalHouse').value;
+      const statusFilter = document.getElementById('filterStatus').value;
+      const q = document.getElementById('search').value.trim().toLowerCase();
+      let rows = orders.filter(o => {
+        if (houseFilter !== 'all' && o.houseId !== houseFilter) return false;
+        if (statusFilter === 'active' && !['Open', 'In progress'].includes(o.status)) return false;
+        if (!['active', 'all'].includes(statusFilter) && o.status !== statusFilter) return false;
+        if (q && !(`${o.id} ${o.title} ${o.room}`.toLowerCase().includes(q))) return false;
+        return true;
+      });
+      document.getElementById('woBody').innerHTML = rows.map(o => `
+        <tr class="data-row" data-id="${o.id}">
+          <td class="muted">${o.id}</td>
+          <td>${houseName(o.houseId)} · ${o.room || '—'}</td>
+          <td><strong>${o.title}</strong></td>
+          <td><span class="pill ${prioClass[o.priority]}">${o.priority}</span></td>
+          <td><span class="pill ${stClass[o.status]}">${o.status}</span></td>
+          <td>${o.assignee || '<span class="muted">Unassigned</span>'}</td>
+          <td>${o.due || '—'}</td>
+          <td class="muted">${o.updated}</td>
+        </tr>`).join('') || `<tr><td colspan="8" class="muted" style="padding:1.5rem">No work orders for this house. Create one when something needs fixing.</td></tr>`;
+      document.querySelectorAll('#woBody tr.data-row').forEach(row => {
+        row.addEventListener('click', () => openDrawer(Number(row.dataset.id)));
+      });
+    }
+
+    function showPage(name) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('visible'));
+      document.getElementById('page-' + name).classList.add('visible');
+      document.querySelectorAll('nav.sidebar a').forEach(a => a.classList.toggle('active', a.dataset.nav === name));
+      document.getElementById('topTitle').textContent = name === 'homes' ? 'Homes' : 'Work orders';
+    }
+
+    function openDrawer(id) {
+      const drawer = document.getElementById('drawer');
+      document.getElementById('overlay').classList.add('open');
+      drawer.classList.add('open');
+      drawer.setAttribute('aria-hidden', 'false');
+      refreshHouseSelects();
+      if (!id) {
+        document.getElementById('drawerTitle').textContent = 'New work order';
+        document.getElementById('btnSave').textContent = 'Create work order';
+        document.getElementById('woTitle').value = '';
+        document.getElementById('woDesc').value = '';
+        document.getElementById('woRoom').value = '';
+        document.getElementById('woPriority').value = 'Normal';
+        document.getElementById('woStatus').value = 'Open';
+        document.getElementById('woAssignee').value = '';
+        const g = document.getElementById('globalHouse').value;
+        if (g !== 'all') document.getElementById('woHouse').value = g;
+        drawer.dataset.editId = '';
+      } else {
+        const o = orders.find(x => x.id === id);
+        document.getElementById('drawerTitle').textContent = 'Work order #' + id;
+        document.getElementById('btnSave').textContent = 'Save';
+        document.getElementById('woTitle').value = o.title;
+        document.getElementById('woDesc').value = '';
+        document.getElementById('woHouse').value = o.houseId;
+        document.getElementById('woRoom').value = o.room || '';
+        document.getElementById('woPriority').value = o.priority;
+        document.getElementById('woStatus').value = o.status;
+        document.getElementById('woAssignee').value = o.assignee;
+        drawer.dataset.editId = String(id);
+      }
+    }
+
+    function closeDrawer() {
+      document.getElementById('drawer').classList.remove('open');
+      document.getElementById('overlay').classList.remove('open');
+    }
+
+    document.querySelectorAll('nav.sidebar a').forEach(a => {
+      a.addEventListener('click', () => showPage(a.dataset.nav));
+    });
+    document.getElementById('btnNew').addEventListener('click', () => openDrawer());
+    document.getElementById('btnClose').addEventListener('click', closeDrawer);
+    document.getElementById('btnCancel').addEventListener('click', closeDrawer);
+    document.getElementById('overlay').addEventListener('click', closeDrawer);
+    document.getElementById('globalHouse').addEventListener('change', renderOrders);
+    document.getElementById('filterStatus').addEventListener('change', renderOrders);
+    document.getElementById('search').addEventListener('input', renderOrders);
+
+    document.getElementById('btnAddHouse').addEventListener('click', () => {
+      const name = document.getElementById('newHouseName').value.trim();
+      const address = document.getElementById('newHouseAddress').value.trim();
+      if (!name) { toast('House name is required'); return; }
+      if (houses.some(h => h.name.toLowerCase() === name.toLowerCase())) {
+        toast('That house already exists'); return;
+      }
+      const id = 'h' + Date.now();
+      houses.push({ id, name, address });
+      document.getElementById('newHouseName').value = '';
+      document.getElementById('newHouseAddress').value = '';
+      refreshHouseSelects();
+      renderHouses();
+      toast(name + ' added — available on work orders');
+    });
+
+    document.getElementById('btnSave').addEventListener('click', () => {
+      const title = document.getElementById('woTitle').value.trim();
+      const houseId = document.getElementById('woHouse').value;
+      if (!title) { toast('Title is required'); return; }
+      if (!houseId) { toast('House is required'); return; }
+      const editId = document.getElementById('drawer').dataset.editId;
+      const payload = {
+        houseId,
+        room: document.getElementById('woRoom').value.trim(),
+        title,
+        priority: document.getElementById('woPriority').value,
+        status: document.getElementById('woStatus').value,
+        assignee: document.getElementById('woAssignee').value,
+        due: document.getElementById('woDue').value || '—',
+        updated: 'just now'
+      };
+      if (editId) {
+        const o = orders.find(x => x.id === Number(editId));
+        Object.assign(o, payload);
+        toast('Work order #' + editId + ' saved');
+      } else {
+        orders.unshift({ id: nextId++, ...payload });
+        toast('Work order created for ' + houseName(houseId));
+      }
+      closeDrawer();
+      renderOrders();
+      renderHouses();
+    });
+
+    refreshHouseSelects();
+    renderOrders();
+    renderHouses();
+  </script>
+</body>
+</html>
