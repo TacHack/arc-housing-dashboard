@@ -7,22 +7,28 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "postinstall": "prisma generate",
     "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
-    "db:studio": "prisma studio"
+    "db:deploy": "prisma migrate deploy && prisma db seed",
+    "db:studio": "prisma studio",
+    "vercel-build": "prisma generate && node scripts/vercel-build-db.mjs && next build"
   },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
+  "engines": {
+    "node": "22.x"
   },
   "dependencies": {
     "@neondatabase/serverless": "1.2.0",
     "@prisma/adapter-neon": "^6.19.3",
     "@prisma/client": "^6.19.3",
+    "dotenv": "^17.2.3",
     "next": "16.4.1",
     "prisma": "^6.19.3",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "tsx": "^4.23.15",
     "ws": "8.22.0"
   },
   "devDependencies": {
@@ -31,11 +37,9 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/ws": "^8.18.2",
-    "dotenv": "^17.2.3",
     "eslint": "^9",
     "eslint-config-next": "16.4.1",
     "tailwindcss": "^4",
-    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }

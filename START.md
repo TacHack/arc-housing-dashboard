@@ -2,6 +2,8 @@
 
 Brand: **ARC Housing Dashboard** (sober living operations CRM).
 
+Production (durable Vercel project + Neon Postgres, not an anonymous preview) is in the README section **Production on Vercel + Neon**. The GitHub user **TacHack** has to sign in to Vercel and connect Neon; this repo cannot do that login.
+
 ## 1. Install PostgreSQL
 
 Use a local install, or Docker:

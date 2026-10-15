@@ -1,85 +1,32 @@
 import "dotenv/config";
-import { PrismaClient, BedStatus, ResidentStatus } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
+import { directDatabaseUrl } from "../prisma/db-url";
+import { seedSampleData } from "../prisma/sample-data";
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({ datasourceUrl: directDatabaseUrl() });
 
 async function main() {
-  const oak = await prisma.house.findFirst({
-    where: { name: "Oak Street House" },
-  });
-  if (!oak) throw new Error("Oak Street House not found — run db:seed first");
-
-  const openBed = await prisma.bed.findFirst({
-    where: { houseId: oak.id, status: BedStatus.open },
-    orderBy: { label: "asc" },
-  });
-
-  const resident = await prisma.resident.create({
-    data: {
-      orgId: oak.orgId,
-      houseId: oak.id,
-      bedId: openBed?.id ?? null,
-      firstName: "Jane",
-      lastName: "Doe",
-      dob: new Date("1990-05-12T00:00:00.000Z"),
-      admissionDate: new Date("2026-09-01T00:00:00.000Z"),
-      insuranceCarrier: "Blue Cross",
-      insuranceMemberId: "BC123456",
-      emergencyContactName: "John Doe",
-      emergencyContactPhone: "555-0100",
-      status: ResidentStatus.active,
-      moveInAt: new Date("2026-09-01T00:00:00.000Z"),
-      meds: {
-        create: [
-          {
-            orgId: oak.orgId,
-            description: "Naltrexone",
-            dosage: "50 mg",
-            amount: "1 tablet daily",
-          },
-          {
-            orgId: oak.orgId,
-            description: "Sertraline",
-            dosage: "25 mg",
-            amount: "1 tablet morning",
-          },
-        ],
-      },
-    },
-    include: { meds: true, bed: true, house: true },
-  });
-
-  if (openBed) {
-    await prisma.bed.update({
-      where: { id: openBed.id },
-      data: { status: BedStatus.occupied },
-    });
-  }
-
+  const { jane } = await seedSampleData(prisma);
   const residentCount = await prisma.resident.count();
   const medCount = await prisma.residentMed.count();
-  const janeMedCount = await prisma.residentMed.count({
-    where: { residentId: resident.id },
-  });
 
   console.log(
     JSON.stringify(
       {
-        residentId: resident.id,
-        url: `/residents/${resident.id}?tab=meds`,
-        house: resident.house?.name,
-        bed: resident.bed?.label ?? null,
-        bedWasOpen: !!openBed,
-        meds: resident.meds.map((m) => ({
-          id: m.id,
-          description: m.description,
-          dosage: m.dosage,
-          amount: m.amount,
+        residentId: jane.id,
+        url: `/residents/${jane.id}?tab=meds`,
+        house: jane.house?.name ?? null,
+        bed: jane.bed?.label ?? null,
+        meds: jane.meds.map((med) => ({
+          id: med.id,
+          description: med.description,
+          dosage: med.dosage,
+          amount: med.amount,
         })),
         counts: {
           residentsTotal: residentCount,
           medsTotal: medCount,
-          janeMeds: janeMedCount,
+          janeMeds: jane.meds.length,
         },
       },
       null,
@@ -89,8 +36,8 @@ async function main() {
 }
 
 main()
-  .catch((e) => {
-    console.error(e);
+  .catch((error) => {
+    console.error(error);
     process.exit(1);
   })
   .finally(async () => {

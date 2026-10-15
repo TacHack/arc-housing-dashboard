@@ -1,5 +1,6 @@
 import "dotenv/config";
-import { defineConfig, env } from "prisma/config";
+import { defineConfig } from "prisma/config";
+import { directDatabaseUrl } from "./prisma/db-url";
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
@@ -9,6 +10,7 @@ export default defineConfig({
   },
   engine: "classic",
   datasource: {
-    url: env("DATABASE_URL"),
+    // Migrate and seed need a direct connection. The app uses the pooled URL.
+    url: directDatabaseUrl(),
   },
 });

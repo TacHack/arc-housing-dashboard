@@ -8,6 +8,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  // Pooled app URL. Prisma CLI uses DATABASE_URL_UNPOOLED (or DIRECT_URL) from prisma.config.ts.
   url      = env("DATABASE_URL")
 }
 
